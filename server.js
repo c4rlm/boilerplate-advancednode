@@ -9,6 +9,8 @@ const passport = require('passport');
 const app = express();
 const routes = require('./routes.js');
 const auth = require('./auth.js');
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
 fccTesting(app); //For FCC testing purposes
 app.use('/public', express.static(process.cwd() + '/public'));
@@ -33,7 +35,18 @@ myDB(async client => {
   const myDataBase = await client.db('database').collection('users');
 
   routes(app, myDataBase);
-  auth(app, myDataBase);  
+  auth(app, myDataBase); 
+  let currentUsers = 0;
+  io.on('connection', socket => {
+    console.log('A user has connected');
+    ++currentUsers;
+    io.emit('user count', currentUsers);
+  });
+  socket.on('disconnect', () => {
+    console.log('A user has disconnected');
+    --currentUsers;
+    io.emit('user count', currentUsers);
+  });
   
   // Be sure to add this...
 }).catch(e => {
@@ -43,6 +56,6 @@ myDB(async client => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+http.listen(PORT, () => {
   console.log('Listening on port ' + PORT);
 });
